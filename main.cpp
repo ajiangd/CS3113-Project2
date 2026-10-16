@@ -25,10 +25,16 @@ constexpr Vector2 ORIGIN      = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
 
 constexpr char BG_COLOUR[] = "#3871E0";
 
+
 // Global Variables
 AppStatus gAppStatus     = RUNNING;
 float     gAngle         = 0.0f,
           gPreviousTicks = 0.0f;
+
+enum Winner { NONE, PLAYER_ONE, PLAYER_TWO };
+
+bool gGameOver = false;
+Winner gWinner   = NONE;
 
 // Table variables
 constexpr char TABLE_FP[] = "assets/table.png";
@@ -61,6 +67,19 @@ Vector2   gPuckPosition = ORIGIN,
           gPuckMovement = {0.0f, 0.0f},
           gPuckScale    = PUCK_SIZE;
 
+// Winner message variabels
+constexpr char  P1_WINS_FP[]       = "assets/p1_wins.png";
+constexpr char  P2_WINS_FP[]       = "assets/p2_wins.png";
+constexpr char  YOU_WIN_FP[]       = "assets/you_win.png";
+constexpr char  COMPUTER_WINS_FP[] = "assets/computer_wins.png";
+constexpr float WIN_MESSAGE_WIDTH  = 600.0f;
+
+Texture2D gP1WinsTexture;
+Texture2D gP2WinsTexture;
+Texture2D gYouWinTexture;
+Texture2D gComputerWinsTexture;
+
+bool gSinglePlayer = false; 
 
 void initialise();
 void processInput();
@@ -110,10 +129,10 @@ void initialise()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Air Hockey Pong");
 
-    gTableTexture   = LoadTexture(TABLE_FP);
+    gTableTexture = LoadTexture(TABLE_FP);
     gPaddle1Texture = LoadTexture(PADDLE1_FP);
     gPaddle2Texture = LoadTexture(PADDLE2_FP);
-    gPuckTexture    = LoadTexture(PUCK_FP);
+    gPuckTexture = LoadTexture(PUCK_FP);
 
     SetTargetFPS(FPS);
 
@@ -131,8 +150,8 @@ void processInput()
     if (IsKeyDown(KEY_W)) gPaddle1Movement.y = -1.0f;
     else if (IsKeyDown(KEY_S)) gPaddle1Movement.y = 1.0f;
 
-    if (IsKeyDown(KEY_UP))   gPaddle2Movement.y = -1.0f;
-    if (IsKeyDown(KEY_DOWN))   gPaddle2Movement.y = 1.0f;
+    if (IsKeyDown(KEY_UP)) gPaddle2Movement.y = -1.0f;
+    if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y = 1.0f;
 
 }
 
@@ -146,7 +165,7 @@ void confinePaddle(Vector2 *position, const Vector2 *scale){
 
 void update()
 {
-    float ticks     = static_cast<float>(GetTime());
+    float ticks = static_cast<float>(GetTime());
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks  = ticks;
 
@@ -160,6 +179,8 @@ void update()
     
     gPuckPosition.x += PUCK_SPEED * gPuckMovement.x * deltaTime;
     gPuckPosition.y += PUCK_SPEED * gPuckMovement.y * deltaTime;
+
+    if (gGameOver) return;
     
     if (gPuckPosition.y - halfPuckHeight < 0.0f){
         gPuckPosition.y  = halfPuckHeight;
@@ -178,6 +199,20 @@ void update()
     if (gPuckMovement.x > 0.0f &&
         isColliding(&gPuckPosition, &gPuckScale, &gPaddle2Position, &gPaddle2Scale)){
         gPuckMovement.x *= -1.0f;
+    }
+
+    float halfPuckWidth = gPuckScale.x/2.0f;
+
+    if (gPuckPosition.x + halfPuckWidth < 0.0f){
+        gGameOver = true;
+        gWinner = PLAYER_TWO;
+        printf("Player 2 wins!\n");
+    }
+
+    if (gPuckPosition.x - halfPuckWidth > SCREEN_WIDTH){
+        gGameOver = true;
+        gWinner = PLAYER_ONE;
+        printf("Player 1 wins!\n");
     }
 }
 
