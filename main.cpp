@@ -14,7 +14,8 @@
 constexpr int SCREEN_WIDTH  = 900,
               SCREEN_HEIGHT = 456,
               FPS           = 60,
-              PADDLE_SPEED  = 350;
+              PADDLE_SPEED  = 350,
+              PUCK_SPEED    = 300;
 
 constexpr Vector2 ORIGIN      = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
                   TABLE_SIZE  = {static_cast<float>(SCREEN_WIDTH),
@@ -115,6 +116,9 @@ void initialise()
     gPuckTexture    = LoadTexture(PUCK_FP);
 
     SetTargetFPS(FPS);
+
+    gPuckMovement = {1.0f, 0.6f};
+    Normalise(&gPuckMovement);
 }
 
 void processInput()
@@ -151,6 +155,22 @@ void update()
 
     confinePaddle(&gPaddle1Position, &gPaddle1Scale);
     confinePaddle(&gPaddle2Position, &gPaddle2Scale);
+
+    float halfPuckHeight = gPuckScale.y / 2.0f;
+    
+    gPuckPosition.x += PUCK_SPEED * gPuckMovement.x * deltaTime;
+    gPuckPosition.y += PUCK_SPEED * gPuckMovement.y * deltaTime;
+    
+    if (gPuckPosition.y - halfPuckHeight < 0.0f)
+    {
+        gPuckPosition.y  = halfPuckHeight;
+        gPuckMovement.y *= -1.0f;
+    }
+    if (gPuckPosition.y + halfPuckHeight > SCREEN_HEIGHT)
+    {
+        gPuckPosition.y  = SCREEN_HEIGHT - halfPuckHeight;
+        gPuckMovement.y *= -1.0f;
+    }
 }
 
 void render()
