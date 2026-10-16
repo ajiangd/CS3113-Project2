@@ -68,10 +68,10 @@ Vector2   gPuckPosition = ORIGIN,
           gPuckScale    = PUCK_SIZE;
 
 // Winner message variabels
-constexpr char  P1_WINS_FP[]       = "assets/p1_wins.png";
-constexpr char  P2_WINS_FP[]       = "assets/p2_wins.png";
-constexpr char  YOU_WIN_FP[]       = "assets/you_win.png";
-constexpr char  COMPUTER_WINS_FP[] = "assets/computer_wins.png";
+constexpr char  P1_WINS_FP[]       = "assets/player1wins.png";
+constexpr char  P2_WINS_FP[]       = "assets/player2wins.png";
+constexpr char  YOU_WIN_FP[]       = "assets/youwin.png";
+constexpr char  COMPUTER_WINS_FP[] = "assets/computerwins.png";
 constexpr float WIN_MESSAGE_WIDTH  = 600.0f;
 
 Texture2D gP1WinsTexture;
@@ -92,9 +92,6 @@ bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
 void confinePaddle(Vector2 *position, const Vector2 *scale);
 
 
-/**
- * @brief Checks for a box-to-box collision between two objects.
- */
 bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
                  const Vector2 *positionB, const Vector2 *scaleB)
 {
@@ -134,6 +131,11 @@ void initialise()
     gPaddle2Texture = LoadTexture(PADDLE2_FP);
     gPuckTexture = LoadTexture(PUCK_FP);
 
+    gP1WinsTexture = LoadTexture(P1_WINS_FP);
+    gP2WinsTexture = LoadTexture(P2_WINS_FP);
+    gYouWinTexture = LoadTexture(YOU_WIN_FP);
+    gComputerWinsTexture = LoadTexture(COMPUTER_WINS_FP);
+
     SetTargetFPS(FPS);
 
     gPuckMovement = {1.0f, 0.6f};
@@ -151,7 +153,7 @@ void processInput()
     else if (IsKeyDown(KEY_S)) gPaddle1Movement.y = 1.0f;
 
     if (IsKeyDown(KEY_UP)) gPaddle2Movement.y = -1.0f;
-    if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y = 1.0f;
+    else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y = 1.0f;
 
 }
 
@@ -169,6 +171,8 @@ void update()
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks  = ticks;
 
+    if (gGameOver) return;
+
     gPaddle1Position.y += PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
     gPaddle2Position.y += PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
 
@@ -180,7 +184,6 @@ void update()
     gPuckPosition.x += PUCK_SPEED * gPuckMovement.x * deltaTime;
     gPuckPosition.y += PUCK_SPEED * gPuckMovement.y * deltaTime;
 
-    if (gGameOver) return;
     
     if (gPuckPosition.y - halfPuckHeight < 0.0f){
         gPuckPosition.y  = halfPuckHeight;
@@ -206,13 +209,11 @@ void update()
     if (gPuckPosition.x + halfPuckWidth < 0.0f){
         gGameOver = true;
         gWinner = PLAYER_TWO;
-        printf("Player 2 wins!\n");
     }
 
     if (gPuckPosition.x - halfPuckWidth > SCREEN_WIDTH){
         gGameOver = true;
         gWinner = PLAYER_ONE;
-        printf("Player 1 wins!\n");
     }
 }
 
@@ -232,6 +233,25 @@ void render()
     // Puck
     renderObject(&gPuckTexture, &gPuckPosition, &gPuckScale);
 
+    if (gGameOver){
+        Texture2D *message;
+
+        if (gWinner == PLAYER_ONE){
+            if (gSinglePlayer) message = &gYouWinTexture;
+            else message = &gP1WinsTexture;
+        }
+    else{
+        if (gSinglePlayer) message = &gComputerWinsTexture;
+        else message = &gP2WinsTexture;
+    }
+
+    float aspect = static_cast<float>(message->height) / message->width;
+    Vector2 messageSize = {WIN_MESSAGE_WIDTH, WIN_MESSAGE_WIDTH * aspect};
+    
+    // Message
+    renderObject(message, &ORIGIN, &messageSize);
+}
+
     EndDrawing();
 }
 
@@ -241,6 +261,11 @@ void shutdown()
     UnloadTexture(gPaddle1Texture);
     UnloadTexture(gPaddle2Texture);
     UnloadTexture(gPuckTexture);
+
+    UnloadTexture(gP1WinsTexture);
+    UnloadTexture(gP2WinsTexture);
+    UnloadTexture(gYouWinTexture);
+    UnloadTexture(gComputerWinsTexture);
 
     CloseWindow();
 }
