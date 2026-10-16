@@ -161,15 +161,23 @@ void update()
     gPuckPosition.x += PUCK_SPEED * gPuckMovement.x * deltaTime;
     gPuckPosition.y += PUCK_SPEED * gPuckMovement.y * deltaTime;
     
-    if (gPuckPosition.y - halfPuckHeight < 0.0f)
-    {
+    if (gPuckPosition.y - halfPuckHeight < 0.0f){
         gPuckPosition.y  = halfPuckHeight;
         gPuckMovement.y *= -1.0f;
     }
-    if (gPuckPosition.y + halfPuckHeight > SCREEN_HEIGHT)
-    {
+    if (gPuckPosition.y + halfPuckHeight > SCREEN_HEIGHT){
         gPuckPosition.y  = SCREEN_HEIGHT - halfPuckHeight;
         gPuckMovement.y *= -1.0f;
+    }
+
+    if (gPuckMovement.x < 0.0f &&
+        isColliding(&gPuckPosition, &gPuckScale, &gPaddle1Position, &gPaddle1Scale)){
+        gPuckMovement.x *= -1.0f;
+    }
+
+    if (gPuckMovement.x > 0.0f &&
+        isColliding(&gPuckPosition, &gPuckScale, &gPaddle2Position, &gPaddle2Scale)){
+        gPuckMovement.x *= -1.0f;
     }
 }
 
