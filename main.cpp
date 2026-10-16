@@ -15,7 +15,7 @@ constexpr int SCREEN_WIDTH  = 900,
               SCREEN_HEIGHT = 456,
               FPS           = 60,
               PADDLE_SPEED  = 350,
-              PUCK_SPEED    = 300;
+              PUCK_SPEED    = 400;
 
 constexpr Vector2 ORIGIN      = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
                   TABLE_SIZE  = {static_cast<float>(SCREEN_WIDTH),
@@ -152,8 +152,12 @@ void processInput()
     if (IsKeyDown(KEY_W)) gPaddle1Movement.y = -1.0f;
     else if (IsKeyDown(KEY_S)) gPaddle1Movement.y = 1.0f;
 
-    if (IsKeyDown(KEY_UP)) gPaddle2Movement.y = -1.0f;
-    else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y = 1.0f;
+    if (IsKeyPressed(KEY_T)) gSinglePlayer = !gSinglePlayer;
+
+    if (!gSinglePlayer){
+        if (IsKeyDown(KEY_UP)) gPaddle2Movement.y = -1.0f;
+        else if (IsKeyDown(KEY_DOWN)) gPaddle2Movement.y = 1.0f;
+    }
 
 }
 
@@ -172,6 +176,17 @@ void update()
     gPreviousTicks  = ticks;
 
     if (gGameOver) return;
+
+    if (gSinglePlayer){
+        float threshold = 10.0f;
+            
+        gPaddle2Movement.y = 0.0f;
+
+        if(gPuckMovement.x > 0.0f){
+            if (gPuckPosition.y < gPaddle2Position.y - threshold) gPaddle2Movement.y = -0.4f;
+            else if (gPuckPosition.y > gPaddle2Position.y + threshold) gPaddle2Movement.y = 0.4f;
+        }
+    }
 
     gPaddle1Position.y += PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
     gPaddle2Position.y += PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
