@@ -61,11 +61,23 @@ Vector2   gPaddle2Position = PADDLE2_INIT_POS,
 
 // Puck variables
 constexpr char PUCK_FP[] = "assets/puck.png";
+constexpr int MAX_PUCKS = 3;
 
 Texture2D gPuckTexture;
-Vector2   gPuckPosition = ORIGIN,
-          gPuckMovement = {0.0f, 0.0f},
-          gPuckScale    = PUCK_SIZE;
+Vector2 gPuckScale = PUCK_SIZE;
+Vector2 gPuckPositions[MAX_PUCKS] = {
+    {ORIGIN.x, ORIGIN.y - 120.0f},
+    ORIGIN,
+    {ORIGIN.x, ORIGIN.y + 120.0f}
+};
+
+Vector2 gPuckMovements[MAX_PUCKS] = {
+    { 1.0f,  0.6f},
+    {-1.0f,  0.4f},
+    { 1.0f, -0.5f}
+};
+
+int gPucksInGame = 1;
 
 // Winner message variabels
 constexpr char  P1_WINS_FP[]       = "assets/player1wins.png";
@@ -90,6 +102,11 @@ void renderObject(const Texture2D *texture, const Vector2 *position, const Vecto
 bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
                  const Vector2 *positionB, const Vector2 *scaleB);
 void confinePaddle(Vector2 *position, const Vector2 *scale);
+void bounceOffPaddle(Vector2 *puckPosition, Vector2 *puckMovement,
+                     const Vector2 *paddlePosition, const Vector2 *paddleScale,
+                     float direction);
+void updatePuck(int i, float deltaTime);
+void updateComputerPaddle();
 
 
 bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
@@ -138,8 +155,9 @@ void initialise()
 
     SetTargetFPS(FPS);
 
-    gPuckMovement = {1.0f, 0.6f};
-    Normalise(&gPuckMovement);
+    for (int i = 0; i < MAX_PUCKS; i++){
+        Normalise(&gPuckMovements[i]);
+    }
 }
 
 void processInput()
@@ -153,6 +171,9 @@ void processInput()
     else if (IsKeyDown(KEY_S)) gPaddle1Movement.y = 1.0f;
 
     if (IsKeyPressed(KEY_T)) gSinglePlayer = !gSinglePlayer;
+    if (IsKeyPressed(KEY_ONE)) gPucksInGame = 1;
+    if (IsKeyPressed(KEY_TWO)) gPucksInGame = 2;
+    if (IsKeyPressed(KEY_THREE)) gPucksInGame = 3;
 
     if (!gSinglePlayer){
         if (IsKeyDown(KEY_UP)) gPaddle2Movement.y = -1.0f;
@@ -169,6 +190,65 @@ void confinePaddle(Vector2 *position, const Vector2 *scale){
         position->y = SCREEN_HEIGHT - halfScreenHeight;
 }
 
+void bounceOffPaddle(Vector2 *puckPosition, Vector2 *puckMovement,
+                     const Vector2 *paddlePosition, const Vector2 *paddleScale,
+                     float direction){
+    float offset = (puckPosition->y - paddlePosition->y) / (paddleScale->y / 2.0f);
+    if (offset >  1.0f) offset =  1.0f;
+    if (offset < -1.0f) offset = -1.0f;
+    *puckMovement = {direction, offset};
+    Normalise(puckMovement);
+}
+
+void updatePuck(int i, float deltaTime){
+    float halfPuckHeight = gPuckScale.y / 2.0f;
+    float halfPuckWidth  = gPuckScale.x / 2.0f;
+
+    gPuckPositions[i].x += PUCK_SPEED * gPuckMovements[i].x * deltaTime;
+    gPuckPositions[i].y += PUCK_SPEED * gPuckMovements[i].y * deltaTime;
+
+    if (gPuckPositions[i].y - halfPuckHeight < 0.0f){
+        gPuckPositions[i].y  = halfPuckHeight;
+        gPuckMovements[i].y *= -1.0f;
+    }
+    if (gPuckPositions[i].y + halfPuckHeight > SCREEN_HEIGHT){
+        gPuckPositions[i].y  = SCREEN_HEIGHT - halfPuckHeight;
+        gPuckMovements[i].y *= -1.0f;
+    }
+
+    if (gPuckMovements[i].x < 0.0f &&
+        isColliding(&gPuckPositions[i], &gPuckScale, &gPaddle1Position, &gPaddle1Scale))
+        bounceOffPaddle(&gPuckPositions[i], &gPuckMovements[i], &gPaddle1Position, &gPaddle1Scale, 1.0f);
+
+    if (gPuckMovements[i].x > 0.0f &&
+        isColliding(&gPuckPositions[i], &gPuckScale, &gPaddle2Position, &gPaddle2Scale))
+        bounceOffPaddle(&gPuckPositions[i], &gPuckMovements[i], &gPaddle2Position, &gPaddle2Scale, -1.0f);
+
+    if (gPuckPositions[i].x + halfPuckWidth < 0.0f){
+        gGameOver = true;
+        gWinner = PLAYER_TWO;
+    }
+    if (gPuckPositions[i].x - halfPuckWidth > SCREEN_WIDTH){
+        gGameOver = true;
+        gWinner = PLAYER_ONE;
+    }
+}
+
+void updateComputerPaddle(){
+    float threshold = 10.0f;
+    gPaddle2Movement.y = 0.0f;
+
+    for (int i = 0; i < gPucksInGame; i++){
+        if (gPuckMovements[i].x > 0.0f){
+            if (gPuckPositions[i].y < gPaddle2Position.y - threshold)
+                gPaddle2Movement.y = -0.4f;
+            else if (gPuckPositions[i].y > gPaddle2Position.y + threshold)
+                gPaddle2Movement.y =  0.4f;
+            break;
+        }
+    }
+}
+
 void update()
 {
     float ticks = static_cast<float>(GetTime());
@@ -177,16 +257,8 @@ void update()
 
     if (gGameOver) return;
 
-    if (gSinglePlayer){
-        float threshold = 10.0f;
-            
-        gPaddle2Movement.y = 0.0f;
-
-        if(gPuckMovement.x > 0.0f){
-            if (gPuckPosition.y < gPaddle2Position.y - threshold) gPaddle2Movement.y = -0.4f;
-            else if (gPuckPosition.y > gPaddle2Position.y + threshold) gPaddle2Movement.y = 0.4f;
-        }
-    }
+    if (gSinglePlayer)
+        updateComputerPaddle();
 
     gPaddle1Position.y += PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
     gPaddle2Position.y += PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
@@ -194,58 +266,12 @@ void update()
     confinePaddle(&gPaddle1Position, &gPaddle1Scale);
     confinePaddle(&gPaddle2Position, &gPaddle2Scale);
 
-    float halfPuckHeight = gPuckScale.y / 2.0f;
-    
-    gPuckPosition.x += PUCK_SPEED * gPuckMovement.x * deltaTime;
-    gPuckPosition.y += PUCK_SPEED * gPuckMovement.y * deltaTime;
-
-    
-    if (gPuckPosition.y - halfPuckHeight < 0.0f){
-        gPuckPosition.y  = halfPuckHeight;
-        gPuckMovement.y *= -1.0f;
-    }
-    if (gPuckPosition.y + halfPuckHeight > SCREEN_HEIGHT){
-        gPuckPosition.y  = SCREEN_HEIGHT - halfPuckHeight;
-        gPuckMovement.y *= -1.0f;
-    }
-
-    if (gPuckMovement.x < 0.0f &&
-        isColliding(&gPuckPosition, &gPuckScale, &gPaddle1Position, &gPaddle1Scale)){
-        
-        float offset = (gPuckPosition.y - gPaddle1Position.y) / (gPaddle1Scale.y /2.0f);
-        if (offset >  1.0f) offset =  1.0f;
-        if (offset < -1.0f) offset = -1.0f;
-       
-        gPuckMovement.x *= -1.0f;
-        Normalise(&gPuckMovement);
-    }
-
-    if (gPuckMovement.x > 0.0f &&
-        isColliding(&gPuckPosition, &gPuckScale, &gPaddle2Position, &gPaddle2Scale)){
-        
-        float offset = (gPuckPosition.y - gPaddle2Position.y) / (gPaddle2Scale.y / 2.0f);
-        if (offset >  1.0f) offset =  1.0f;
-        if (offset < -1.0f) offset = -1.0f;
-
-        gPuckMovement = {-1.0f, offset};
-        Normalise(&gPuckMovement);
-    }
-
-    float halfPuckWidth = gPuckScale.x/2.0f;
-
-    if (gPuckPosition.x + halfPuckWidth < 0.0f){
-        gGameOver = true;
-        gWinner = PLAYER_TWO;
-    }
-
-    if (gPuckPosition.x - halfPuckWidth > SCREEN_WIDTH){
-        gGameOver = true;
-        gWinner = PLAYER_ONE;
+    for (int i = 0; i < gPucksInGame; i++){
+        updatePuck(i, deltaTime);
     }
 }
 
-void render()
-{
+void render(){
     BeginDrawing();
 
     ClearBackground(ColorFromHex(BG_COLOUR));
@@ -258,7 +284,9 @@ void render()
     renderObject(&gPaddle2Texture, &gPaddle2Position, &gPaddle2Scale);
 
     // Puck
-    renderObject(&gPuckTexture, &gPuckPosition, &gPuckScale);
+    for (int i = 0; i < gPucksInGame; i++){
+        renderObject(&gPuckTexture, &gPuckPositions[i], &gPuckScale);
+    }
 
     if (gGameOver){
         Texture2D *message;
