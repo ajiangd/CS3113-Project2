@@ -15,7 +15,7 @@ constexpr int SCREEN_WIDTH  = 900,
               SCREEN_HEIGHT = 456,
               FPS           = 60,
               PADDLE_SPEED  = 350,
-              PUCK_SPEED    = 400;
+              PUCK_SPEED    = 300;
 
 constexpr Vector2 ORIGIN      = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
                   TABLE_SIZE  = {static_cast<float>(SCREEN_WIDTH),
@@ -211,12 +211,24 @@ void update()
 
     if (gPuckMovement.x < 0.0f &&
         isColliding(&gPuckPosition, &gPuckScale, &gPaddle1Position, &gPaddle1Scale)){
+        
+        float offset = (gPuckPosition.y - gPaddle1Position.y) / (gPaddle1Scale.y /2.0f);
+        if (offset >  1.0f) offset =  1.0f;
+        if (offset < -1.0f) offset = -1.0f;
+       
         gPuckMovement.x *= -1.0f;
+        Normalise(&gPuckMovement);
     }
 
     if (gPuckMovement.x > 0.0f &&
         isColliding(&gPuckPosition, &gPuckScale, &gPaddle2Position, &gPaddle2Scale)){
-        gPuckMovement.x *= -1.0f;
+        
+        float offset = (gPuckPosition.y - gPaddle2Position.y) / (gPaddle2Scale.y / 2.0f);
+        if (offset >  1.0f) offset =  1.0f;
+        if (offset < -1.0f) offset = -1.0f;
+
+        gPuckMovement = {-1.0f, offset};
+        Normalise(&gPuckMovement);
     }
 
     float halfPuckWidth = gPuckScale.x/2.0f;
