@@ -13,7 +13,8 @@
 // Global Constants
 constexpr int SCREEN_WIDTH  = 900,
               SCREEN_HEIGHT = 456,
-              FPS           = 60;
+              FPS           = 60,
+              PADDLE_SPEED  = 350;
 
 constexpr Vector2 ORIGIN      = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
                   TABLE_SIZE  = {static_cast<float>(SCREEN_WIDTH),
@@ -68,6 +69,7 @@ void shutdown();
 void renderObject(const Texture2D *texture, const Vector2 *position, const Vector2 *scale);
 bool isColliding(const Vector2 *positionA, const Vector2 *scaleA,
                  const Vector2 *positionB, const Vector2 *scaleB);
+void confinePaddle(Vector2 *position, const Vector2 *scale);
 
 
 /**
@@ -118,6 +120,24 @@ void initialise()
 void processInput()
 {
     if (IsKeyPressed(KEY_Q) || WindowShouldClose()) gAppStatus = TERMINATED;
+    
+    gPaddle1Movement = {0.0f, 0.0f};
+    gPaddle2Movement = {0.0f, 0.0f};
+
+    if (IsKeyDown(KEY_W)) gPaddle1Movement.y = -1.0f;
+    else if (IsKeyDown(KEY_S)) gPaddle1Movement.y = 1.0f;
+
+    if (IsKeyDown(KEY_UP))   gPaddle2Movement.y = -1.0f;
+    if (IsKeyDown(KEY_DOWN))   gPaddle2Movement.y = 1.0f;
+
+}
+
+void confinePaddle(Vector2 *position, const Vector2 *scale){
+    float halfScreenHeight = scale->y/2.0f;
+    if (position->y - halfScreenHeight < 0.0f)
+        position->y = halfScreenHeight;
+    if (position->y + halfScreenHeight > SCREEN_HEIGHT)
+        position->y = SCREEN_HEIGHT - halfScreenHeight;
 }
 
 void update()
@@ -126,6 +146,11 @@ void update()
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks  = ticks;
 
+    gPaddle1Position.y += PADDLE_SPEED * gPaddle1Movement.y * deltaTime;
+    gPaddle2Position.y += PADDLE_SPEED * gPaddle2Movement.y * deltaTime;
+
+    confinePaddle(&gPaddle1Position, &gPaddle1Scale);
+    confinePaddle(&gPaddle2Position, &gPaddle2Scale);
 }
 
 void render()
